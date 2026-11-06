@@ -1,3 +1,5 @@
+name: stage3
+
 services:
   redis:
     image: redis:7-alpine
@@ -38,6 +40,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: stage3-frontend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend

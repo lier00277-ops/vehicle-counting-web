@@ -1,0 +1,61 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DB_URL=sqlite:////app/data/app.db
+      - YOLO_WEIGHTS=/app/models/yolo26n.pt
+      - SAM_WEIGHTS=/app/models/sam_vit_b_01ec64.pth
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    command: ["python", "-m", "app.worker"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DB_URL=sqlite:////app/data/app.db
+      - YOLO_WEIGHTS=/app/models/yolo26n.pt
+      - SAM_WEIGHTS=/app/models/sam_vit_b_01ec64.pth
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    environment:
+      - API_BASE_URL=http://api:8000
+      - VLM_MODEL=${VLM_MODEL:-glm-5.3-flashx}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - api
+    restart: unless-stopped

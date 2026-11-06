@@ -1,0 +1,12 @@
+.git
+.gitignore
+venv
+.venv
+data
+models
+__pycache__
+*.pyc
+*.pt
+*.pth
+.env
+runs

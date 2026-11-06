@@ -55,10 +55,28 @@ D:\stage3\venv\Scripts\python.exe -m streamlit run frontend/app.py --server.port
 - `POST /api/predict`：上传图片，返回两套方案结果
 - `GET /api/history`：历史记录
 
-## Docker
+## Docker 部署（Ubuntu 虚拟机）
 
-```powershell
+```bash
+git clone https://github.com/lier00277-ops/vehicle-counting-web.git
+cd vehicle-counting-web
+
+# 1. 放权重（yolo26n.pt 约 5MB，sam_vit_b_01ec64.pth 约 358MB）
+mkdir -p models
+# 用 scp / 共享文件夹把权重拷进 models/，或在虚拟机里下载：
+# wget -O models/yolo26n.pt https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt
+# wget -O models/sam_vit_b_01ec64.pth https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
+
+# 2. 配置
+cp .env.example .env
+# 编辑 .env，填 VLM_API_KEY、改 JWT_SECRET 和 APP 密码
+
+# 3. 启动
 docker compose up -d --build
+
+# 4. 查看
+docker compose ps
+docker compose logs -f api
 ```
 
-浏览器打开 http://localhost。
+浏览器打开 `http://虚拟机IP`，默认账号 `demo`，密码看 `.env` 里的 `APP_PASSWORD`。

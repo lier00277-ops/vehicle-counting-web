@@ -5,8 +5,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+ARG PIP_INDEX=https://mirrors.aliyun.com/pypi/simple/
+
 COPY requirements.frontend.txt .
-RUN pip install --no-cache-dir -r requirements.frontend.txt
+RUN pip install --no-cache-dir -r requirements.frontend.txt --index-url ${PIP_INDEX}
 
 COPY frontend ./frontend
 

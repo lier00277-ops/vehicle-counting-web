@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
 
   api:
+    image: stage3-api:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.api
@@ -21,9 +22,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.api
+    image: stage3-api:latest
     command: ["python", "-m", "app.worker"]
     env_file: .env
     environment:

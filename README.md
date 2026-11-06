@@ -12,6 +12,8 @@ stage3/
 │   ├── db.py            # SQLAlchemy
 │   ├── models.py        # 数据表
 │   ├── auth.py          # JWT 登录
+│   ├── queue.py         # Redis 队列
+│   ├── worker.py        # 后台任务
 │   └── services/
 │       ├── detector.py  # YOLO + SAM
 │       └── vlm.py       # 智谱 GLM
@@ -25,17 +27,25 @@ stage3/
 ## 本地运行
 
 ```powershell
+# 1. 启动 Redis
+docker run -d --name stage3-redis -p 6379:6379 redis:7-alpine
+
+# 2. 装依赖
 uv venv D:\stage3\venv --python 3.12
 uv pip install --python D:\stage3\venv\Scripts\python.exe -r requirements.txt
-
 copy .env.example .env   # 填 VLM_API_KEY
 
-# 后端
+# 3. 后端
 D:\stage3\venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 
-# 前端
+# 4. worker（另开一个终端）
+D:\stage3\venv\Scripts\python.exe -m app.worker
+
+# 5. 前端（另开一个终端）
 D:\stage3\venv\Scripts\python.exe -m streamlit run frontend/app.py --server.port 8501
 ```
+
+上传后接口先返回 `job_id`，前端轮询 `/api/jobs/{job_id}` 拿结果。
 
 浏览器打开 http://127.0.0.1:8501，默认账号 `demo`，密码看 `.env`。
 

@@ -1,6 +1,7 @@
 """Streamlit 前端：登录后上传图片，并排展示两套方案。"""
 import base64
 import os
+import time
 
 import requests
 import streamlit as st
@@ -39,20 +40,40 @@ if st.session_state.token is None:
     st.info("先在左侧登录")
     st.stop()
 
+headers = {"Authorization": f"Bearer {st.session_state.token}"}
+
 up = st.file_uploader("上传一张道路/街景图片", type=["jpg", "jpeg", "png"])
 if up:
-    with st.spinner("处理中（YOLO + SAM + 大模型）..."):
-        r = requests.post(
-            f"{API_BASE}/api/predict",
-            files={"file": (up.name, up.getvalue(), up.type or "image/jpeg")},
-            headers={"Authorization": f"Bearer {st.session_state.token}"},
-            timeout=300,
-        )
+    r = requests.post(
+        f"{API_BASE}/api/predict",
+        files={"file": (up.name, up.getvalue(), up.type or "image/jpeg")},
+        headers=headers,
+        timeout=30,
+    )
     if r.status_code != 200:
-        st.error(f"请求失败：{r.status_code} {r.text}")
+        st.error(f"提交失败：{r.status_code} {r.text}")
         st.stop()
 
-    data = r.json()
+    job_id = r.json()["job_id"]
+    box = st.empty()
+    data = None
+    for _ in range(180):
+        jr = requests.get(f"{API_BASE}/api/jobs/{job_id}", headers=headers, timeout=10)
+        result = jr.json()
+        if result.get("status") in ("done", "error"):
+            data = result
+            break
+        box.info(f"后台处理中（{result.get('status', 'pending')}）…")
+        time.sleep(1)
+    box.empty()
+
+    if data is None:
+        st.error("超时，任务还没有结果")
+        st.stop()
+    if data.get("status") == "error":
+        st.error(f"处理失败：{data.get('error')}")
+        st.stop()
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -77,7 +98,6 @@ if up:
                 st.code(v["raw"])
 
     with st.expander("历史记录"):
-        r = requests.get(f"{API_BASE}/api/history",
-                         headers={"Authorization": f"Bearer {st.session_state.token}"}, timeout=10)
+        r = requests.get(f"{API_BASE}/api/history", headers=headers, timeout=10)
         if r.status_code == 200:
             st.table(r.json())

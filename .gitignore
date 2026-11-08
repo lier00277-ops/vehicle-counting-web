@@ -9,3 +9,4 @@ models/
 *.pth
 runs/
 .streamlit/
+docs/第三阶段-项目说明与感悟.md

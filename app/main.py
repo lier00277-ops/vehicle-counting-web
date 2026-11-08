@@ -1,6 +1,8 @@
 """车辆清点对比 Web API。"""
 from __future__ import annotations
 
+import base64
+import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -57,16 +59,40 @@ def job_status(job_id: str, user: str = Depends(current_user)):
     return result
 
 
+def _record_dict(r: Prediction) -> dict:
+    return {
+        "id": r.id,
+        "job_id": r.job_id,
+        "filename": r.filename,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "status": r.status,
+        "error": r.error,
+        "yolo_total": r.yolo_total,
+        "yolo_counts": json.loads(r.yolo_counts or "{}"),
+        "vlm_total": r.vlm_total,
+        "vlm_counts": json.loads(r.vlm_counts or "{}"),
+        "yolo_ms": r.yolo_ms,
+        "vlm_ms": r.vlm_ms,
+    }
+
+
 @app.get("/api/history")
 def history(limit: int = 20, user: str = Depends(current_user),
             db: Session = Depends(get_db)):
     rows = db.query(Prediction).order_by(Prediction.id.desc()).limit(limit).all()
-    return [{
-        "id": r.id,
-        "filename": r.filename,
-        "created_at": r.created_at.isoformat() if r.created_at else None,
-        "yolo_total": r.yolo_total,
-        "vlm_total": r.vlm_total,
-        "yolo_ms": r.yolo_ms,
-        "vlm_ms": r.vlm_ms,
-    } for r in rows]
+    return [_record_dict(r) for r in rows]
+
+
+@app.get("/api/history/{record_id}")
+def history_detail(record_id: int, user: str = Depends(current_user),
+                   db: Session = Depends(get_db)):
+    r = db.get(Prediction, record_id)
+    if r is None:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    out = _record_dict(r)
+    out["vlm_raw"] = r.vlm_raw
+    image_base64 = ""
+    if r.image_path and Path(r.image_path).is_file():
+        image_base64 = base64.b64encode(Path(r.image_path).read_bytes()).decode()
+    out["image_base64"] = image_base64
+    return out

@@ -15,6 +15,9 @@ PROMPT = """你是车辆清点助手。请清点图中所有机动车（car、bu
 {"cars": 数字, "buses": 数字, "trucks": 数字, "motorcycles": 数字, "total": 数字, "description": "一句话描述场景"}"""
 
 
+COUNT_KEYS = ("cars", "buses", "trucks", "motorcycles")
+
+
 def parse_json(text: str):
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
@@ -23,6 +26,30 @@ def parse_json(text: str):
         return json.loads(m.group(0))
     except json.JSONDecodeError:
         return None
+
+
+def validate(parsed) -> str | None:
+    """校验大模型返回的结构化结果，返回 None 表示通过，否则返回失败原因。"""
+    if not isinstance(parsed, dict):
+        return "返回内容不是 JSON 对象"
+    for key in COUNT_KEYS + ("total",):
+        if key not in parsed:
+            return f"缺少字段 {key}"
+        v = parsed[key]
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or int(v) != v or v < 0:
+            return f"字段 {key}={v!r} 不是非负整数"
+    subtotal = sum(int(parsed[k]) for k in COUNT_KEYS)
+    if int(parsed["total"]) != subtotal:
+        return f"total={int(parsed['total'])} 与分类之和 {subtotal} 不一致"
+    return None
+
+
+def normalize(parsed: dict) -> dict:
+    """把数值统一转成 int，去掉多余的小数形式。"""
+    out = dict(parsed)
+    for key in COUNT_KEYS + ("total",):
+        out[key] = int(out[key])
+    return out
 
 
 def analyze(image_bytes: bytes, timeout: int = 120, retries: int = 1) -> dict:

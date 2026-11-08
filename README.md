@@ -52,8 +52,10 @@ D:\stage3\venv\Scripts\python.exe -m streamlit run frontend/app.py --server.port
 ## 接口
 
 - `POST /api/login`：登录拿 token
-- `POST /api/predict`：上传图片，返回两套方案结果
-- `GET /api/history`：历史记录
+- `POST /api/predict`：上传图片，返回 `job_id`
+- `GET /api/jobs/{job_id}`：轮询任务状态和结果
+- `GET /api/history`：历史记录（含完整分类计数、状态、失败原因）
+- `GET /api/history/{id}`：单条记录详情（含标注图和大模型原始返回）
 
 ## Docker 部署（Ubuntu 虚拟机）
 
